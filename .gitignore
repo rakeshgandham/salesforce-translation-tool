@@ -45,3 +45,7 @@ Thumbs.db
 credentials.json
 secrets.json
 config.json
+
+# Scripts with credentials filled in
+*-credentials.py
+*-with-credentials.py
