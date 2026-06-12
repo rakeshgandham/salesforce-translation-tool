@@ -17,24 +17,19 @@ Easily extensible to support additional objects.
 - ✅ Manual CSV workflow for review and editing
 - ✅ Batch processing with Salesforce Composite API
 - ✅ Support for multiple translation libraries (googletrans, deep-translator)
+- ✅ Two authentication methods: Salesforce CLI or Username/Password
 - ✅ Rate limiting and error handling
 
 ---
 
 ## Prerequisites
 
-### 1. Salesforce CLI
-```bash
-sf --version
-```
-If not installed, get it from: https://developer.salesforce.com/tools/salesforcecli
-
-### 2. Python 3.7+
+### 1. Python 3.7+
 ```bash
 python3 --version
 ```
 
-### 3. Python Dependencies
+### 2. Python Dependencies
 ```bash
 pip3 install requests googletrans==4.0.0-rc1
 ```
@@ -44,24 +39,60 @@ pip3 install requests googletrans==4.0.0-rc1
 pip3 install deep-translator
 ```
 
+### 3. Authentication (Choose One)
+
+#### Option A: Salesforce CLI (Recommended)
+```bash
+sf --version
+```
+If not installed, get it from: https://developer.salesforce.com/tools/salesforcecli
+
+#### Option B: Username/Password/Security Token
+No CLI needed - just your Salesforce credentials.
+
 ---
 
 ## Setup
 
-### 1. Configure Your Org
+Choose your authentication method:
 
-Edit the scripts and update these variables:
+### Option A: Using Salesforce CLI
+
+#### 1. Configure Your Org
+
+Edit `query-and-translate-records.py` and update:
 
 ```python
 ORG_ALIAS = "your-org-alias"  # Your Salesforce org alias
 INSTANCE_URL = "https://your-instance.salesforce.com"  # Your instance URL
 ```
 
-### 2. Login to Salesforce
+#### 2. Login to Salesforce
 
 ```bash
 sf org login web --instance-url https://your-instance.salesforce.com --alias your-org-alias
 ```
+
+### Option B: Using Username/Password
+
+#### 1. Get Your Security Token
+
+1. Login to Salesforce
+2. Go to **Setup → My Personal Information → Reset My Security Token**
+3. Check your email for the security token
+
+#### 2. Configure Credentials
+
+Edit `query-and-translate-records-username-password.py` and update lines 19-24:
+
+```python
+SALESFORCE_USERNAME = "your-username@example.com"
+SALESFORCE_PASSWORD = "your-password"
+SALESFORCE_SECURITY_TOKEN = "your-security-token"
+SALESFORCE_DOMAIN = "login.salesforce.com"  # or "test.salesforce.com" for sandbox
+```
+
+**⚠️ Security Note:** Never commit this file with real credentials to Git!
 
 ---
 
@@ -69,10 +100,16 @@ sf org login web --instance-url https://your-instance.salesforce.com --alias you
 
 ### Option 1: Automated Translation (Recommended)
 
-Automatically query records, translate using Google Translate, and insert Translation records:
+Automatically query records, translate using Google Translate, and insert Translation records.
 
+**Using Salesforce CLI:**
 ```bash
 python3 query-and-translate-records.py
+```
+
+**Using Username/Password:**
+```bash
+python3 query-and-translate-records-username-password.py
 ```
 
 **Example output:**
@@ -217,10 +254,14 @@ This is exactly how Salesforce Translation Workbench stores translations interna
 
 | File | Purpose |
 |---|---|
-| `query-and-translate-records.py` | Automated translation with Google Translate |
+| `query-and-translate-records.py` | Automated translation (Salesforce CLI auth) |
+| `query-and-translate-records-username-password.py` | Automated translation (Username/Password auth) |
 | `export-for-translation.py` | Export records to CSV for manual translation |
 | `import-translations-from-csv.py` | Import translations from edited CSV |
+| `requirements.txt` | Python dependencies |
+| `.gitignore` | Prevents committing sensitive files |
 | `README.md` | This documentation |
+| `PUSH_TO_GITHUB.md` | Instructions for creating GitHub repo |
 
 ---
 
