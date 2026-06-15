@@ -4,8 +4,10 @@ Automated tool to translate Salesforce BPO record names to French and create cor
 
 ## Supported Objects
 
-- `FundingAwardRequirementSection` → `FundingAwardRqmtSectionTranslation`
-- `IndividualApplicationTask` → `IndividualApplicationTaskTranslation`
+- `ActionPlan` → `ActionPlanDataTranslation`
+- `FundingAwardRqmtSection` → `FundingAwardRqmtSectionDataTranslation`
+- `IndividualApplicationTask` → `IndividualApplicationTaskDataTranslation`
+- `IntakeFormSection` → `IntakeFormSectionDataTranslation`
 
 Easily extensible to support additional objects.
 
@@ -18,6 +20,8 @@ Easily extensible to support additional objects.
 - ✅ Batch processing with Salesforce Composite API
 - ✅ Support for multiple translation libraries (googletrans, deep-translator)
 - ✅ Two authentication methods: Salesforce CLI or Username/Password
+- ✅ Duplicate detection - automatically skips records that already have translations
+- ✅ Interactive credential prompting (no hardcoding required)
 - ✅ Rate limiting and error handling
 
 ---
@@ -75,24 +79,38 @@ sf org login web --instance-url https://your-instance.salesforce.com --alias you
 
 ### Option B: Using Username/Password
 
-#### 1. Get Your Security Token
+#### 1. Configure Instance URL
 
-1. Login to Salesforce
-2. Go to **Setup → My Personal Information → Reset My Security Token**
-3. Check your email for the security token
-
-#### 2. Configure Credentials
-
-Edit `query-and-translate-records-username-password.py` and update lines 19-24:
+Edit `query-and-translate-records-username-password.py` and update the configuration (lines 13-17):
 
 ```python
-SALESFORCE_USERNAME = "your-username@example.com"
-SALESFORCE_PASSWORD = "your-password"
-SALESFORCE_SECURITY_TOKEN = "your-security-token"
-SALESFORCE_DOMAIN = "login.salesforce.com"  # or "test.salesforce.com" for sandbox
+INSTANCE_URL = "https://your-instance.salesforce.com"  # Your Salesforce instance URL
+USERNAME = ""  # Leave empty to be prompted, or hardcode your username
+PASSWORD = ""  # Leave empty to be prompted, or hardcode your password
+SECURITY_TOKEN = ""  # Leave empty if not needed (trusted IP), or add your token
+API_VERSION = "67.0"  # Change if needed (61.0, 62.0, 68.0, etc.)
 ```
 
-**⚠️ Security Note:** Never commit this file with real credentials to Git!
+#### 2. Get Your Security Token (if needed)
+
+Security tokens are **only required if logging in from an untrusted IP address**.
+
+To get your security token:
+1. Login to Salesforce
+2. Go to **Setup → My Personal Information → Reset My Security Token**
+3. Click "Reset Security Token" - it will be emailed to you
+
+#### 3. Run the Script
+
+The script will **prompt you for credentials** if they're not hardcoded:
+- Username
+- Password
+- Whether you need a security token (y/N)
+- Security token (if needed)
+
+**⚠️ Security Note:** 
+- Credentials can be entered interactively (recommended) or hardcoded
+- Never commit hardcoded credentials to Git!
 
 ---
 
@@ -114,13 +132,29 @@ python3 query-and-translate-records-username-password.py
 
 **Example output:**
 ```
-Translating 3 records:
+============================================================
+French Translation Generator
+Username/Password Authentication
+============================================================
+
+1. Logging in...
+✅ Logged in successfully
+   Instance URL: https://your-instance.salesforce.com
+   API Version: v67.0
+
+2. Processing ActionPlan...
+✅ Found 5 ActionPlan records
+
+Translating 5 records:
   1. Application Review Task          → Tâche de révision de la demande
   2. Eligibility Section               → Section d'éligibilité
   3. Funding Award Requirements        → Exigences d'attribution de financement
-
-Ready to insert 3 translation records.
-Continue? (y/N):
+  
+3. Inserting translations...
+   ℹ️  Found 2 existing translations, will skip those
+⏭️  Skipped 2 records (already have translations)
+✅ Successfully inserted 3 new translation records
+   Total processed: 5 records
 ```
 
 ---
@@ -167,9 +201,9 @@ The automated script supports multiple translation backends:
 | **deep-translator** | More reliable | Slightly slower | `pip3 install deep-translator` |
 | **manual** (fallback) | No dependencies | Basic word replacement | Built-in |
 
-To switch methods, edit `query-and-translate-records.py` line 19:
+To switch methods, edit the script (line 27 in username-password version, line 19 in CLI version):
 ```python
-TRANSLATION_METHOD = 'googletrans'      # or 'deep-translator' or 'manual'
+TRANSLATION_METHOD = 'googletrans'      # or 'deep-translator'
 ```
 
 ---
@@ -182,9 +216,11 @@ To support additional BPO objects:
 
 ```python
 TRANSLATION_OBJECTS = {
-    "FundingAwardRequirementSection": "FundingAwardRqmtSectionTranslation",
-    "IndividualApplicationTask": "IndividualApplicationTaskTranslation",
-    "YourNewObject": "YourNewObjectTranslation",  # Add this
+    "ActionPlan": "ActionPlanDataTranslation",
+    "FundingAwardRqmtSection": "FundingAwardRqmtSectionDataTranslation",
+    "IndividualApplicationTask": "IndividualApplicationTaskDataTranslation",
+    "IntakeFormSection": "IntakeFormSectionDataTranslation",
+    "YourNewObject": "YourNewObjectDataTranslation",  # Add this
 }
 ```
 
@@ -192,8 +228,10 @@ TRANSLATION_OBJECTS = {
 
 ```python
 OBJECTS_TO_EXPORT = [
-    "FundingAwardRequirementSection",
+    "ActionPlan",
+    "FundingAwardRqmtSection",
     "IndividualApplicationTask",
+    "IntakeFormSection",
     "YourNewObject",  # Add this
 ]
 ```
@@ -220,14 +258,26 @@ pip3 install deep-translator
 ```
 
 ### Error: "FIELD_INTEGRITY_EXCEPTION: Duplicate Name"
-Translation records already exist. Either:
-1. Delete existing translations first
-2. Modify the script to check for existing records before inserting
+**This should no longer occur** - the script automatically detects and skips records that already have translations. If you still encounter this error, there may be an issue with the duplicate detection logic.
 
 ### Translation API Rate Limiting
 - The script includes a 0.1s delay between translations
 - Try switching to `deep-translator` method
 - Or use the manual CSV workflow
+
+### Error: "INVALID_TYPE" or "Object not supported"
+The object doesn't exist in your org, or the API version is too old/new. Try:
+1. Verify the object exists in your org
+2. Adjust the `API_VERSION` setting at the top of the script (e.g., 61.0, 62.0, 67.0, 68.0)
+
+### Login Failures (Username/Password method)
+If login fails, check:
+- Username is correct (usually your email)
+- Password is correct
+- Security token is appended to password (if required)
+- Your IP is trusted OR you're using the security token
+- INSTANCE_URL is set correctly
+- The SOAP API endpoint is accessible (uses v64.0 for login)
 
 ---
 
@@ -239,12 +289,25 @@ For each source record, a corresponding Translation record is created:
 
 ```json
 {
-  "attributes": {"type": "IndividualApplicationTaskTranslation"},
+  "attributes": {"type": "IndividualApplicationTaskDataTranslation"},
   "ParentId": "a1X5g000000ABC1",  // Lookup to source record
   "Language": "fr",                // French
   "Name": "Révision de la demande" // Translated name
 }
 ```
+
+### Authentication Methods
+
+**Username/Password (SOAP API):**
+- Uses Salesforce SOAP API v64.0 for login
+- Returns a session ID used as Bearer token for REST API calls
+- Queries and data operations use the configured API version (e.g., v67.0)
+- Security token may be required depending on your IP trust settings
+
+**Salesforce CLI:**
+- Uses the SF CLI's stored OAuth credentials
+- More secure - no password handling in the script
+- Recommended for development environments
 
 This is exactly how Salesforce Translation Workbench stores translations internally.
 
@@ -262,6 +325,19 @@ This is exactly how Salesforce Translation Workbench stores translations interna
 | `.gitignore` | Prevents committing sensitive files |
 | `README.md` | This documentation |
 | `PUSH_TO_GITHUB.md` | Instructions for creating GitHub repo |
+
+---
+
+## Recent Improvements
+
+### Username/Password Script Updates
+- ✅ **Duplicate Detection**: Automatically checks for existing translations and skips them
+- ✅ **Interactive Prompts**: No need to hardcode credentials - script prompts for them
+- ✅ **Smart Security Token Handling**: Only prompts for token if needed
+- ✅ **Object Existence Checks**: Verifies objects exist before querying
+- ✅ **Better Error Messages**: Clear guidance on what to check if login fails
+- ✅ **Batch Processing**: Handles large datasets with 200-record batches
+- ✅ **API Version Flexibility**: Easy to adjust API version for different org configurations
 
 ---
 
