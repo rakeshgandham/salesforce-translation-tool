@@ -1,20 +1,117 @@
-# Salesforce BPO Record Translation Tool
+# Salesforce Automation Scripts
 
-Automated tool to translate Salesforce BPO record names to French and create corresponding Translation records.
+Collection of Python scripts for Salesforce data management and automation.
 
-## Supported Objects
+## Scripts
+
+1. **[Budget Creation Tool](#budget-creation-tool)** - Create Budget records with related Categories and Periods
+2. **[BPO Record Translation Tool](#bpo-record-translation-tool)** - Translate BPO record names to French
+
+---
+
+## Budget Creation Tool
+
+Create Budget sObjects with related BudgetCategory and BudgetPeriod records using Salesforce Composite Graph API.
+
+### Available Scripts
+
+| Script | Authentication | Best For |
+|--------|---------------|----------|
+| `create-budget-with-categories-periods.py` | Salesforce CLI | Developers with CLI |
+| `create-budget-with-categories-periods-username-password.py` | Username/Password | Automation, no CLI needed |
+| `create-budget-enhanced-csv.py` | Salesforce CLI | Full CSV import with CLI |
+| `create-budget-enhanced-csv-username-password.py` | Username/Password | Full CSV import, no CLI |
+
+### Quick Start (Salesforce CLI)
+
+```bash
+# 1. Install dependencies & authenticate
+pip3 install requests
+sf org login web --alias myorg
+
+# 2. Configure the script
+vi create-budget-with-categories-periods.py
+# Update ORG_ALIAS and INSTANCE_URL
+
+# 3. Prepare input files
+cat > budget_categories.txt << EOF
+Personnel
+Equipment
+Travel
+Supplies
+EOF
+
+cat > budget_periods.txt << EOF
+Q1 FY2026
+Q2 FY2026
+Q3 FY2026
+Q4 FY2026
+EOF
+
+# 4. Run the script
+python3 create-budget-with-categories-periods.py
+```
+
+### Quick Start (Username/Password)
+
+```bash
+# 1. Install dependencies
+pip3 install requests
+
+# 2. Run script (will prompt for credentials)
+python3 create-budget-with-categories-periods-username-password.py
+# Enter: Instance URL, Username, Password, Security Token (if needed)
+```
+
+### Features
+
+- ✅ **Single API call** - Creates Budget + all child records in one Composite Graph request
+- ✅ **Two authentication methods** - Salesforce CLI or Username/Password
+- ✅ **Flexible input** - Supports both text files and CSV files
+- ✅ **Automatic relationships** - Parent-child references resolved automatically
+- ✅ **Interactive** - Prompts for budget details and credentials
+- ✅ **Detailed results** - Reports success/failure with direct record links
+
+### Documentation
+
+- 📖 [Full Documentation](./BUDGET_CREATION_README.md)
+- 🚀 [Quick Start Guide](./QUICK_START_BUDGET.md)
+- 🔐 [Authentication Guide](./AUTHENTICATION_GUIDE.md) - Choose your auth method
+
+### Sample Files Included
+
+- `budget_categories.txt` - Simple text format
+- `budget_periods.txt` - Simple text format  
+- `budget_categories.csv` - CSV with additional fields
+- `budget_periods.csv` - CSV with date ranges
+
+---
+
+## BPO Record Translation Tool
+
+Automated tool to translate Salesforce BPO record names to multiple languages and create corresponding Translation records.
+
+### Supported Objects
 
 - `ActionPlan` → `ActionPlanDataTranslation`
 - `FundingAwardRqmtSection` → `FundingAwardRqmtSectionDataTranslation`
 - `IndividualApplicationTask` → `IndividualApplicationTaskDataTranslation`
 - `IntakeFormSection` → `IntakeFormSectionDataTranslation`
+- `BudgetCategory` → `BudgetCategoryDataTranslation`
+- `BudgetPeriod` → `BudgetPeriodDataTranslation`
 
 Easily extensible to support additional objects.
 
----
+### Supported Languages
+
+**Popular**: French, Spanish, German, Italian, Portuguese, Japanese, Chinese (Simplified)
+
+**All Languages**: French (fr), Spanish (es), German (de), Italian (it), Portuguese (pt), Japanese (ja), Chinese Simplified (zh-cn), Chinese Traditional (zh-tw), Korean (ko), Arabic (ar), Hindi (hi), Russian (ru), Dutch (nl), Polish (pl), Turkish (tr), Swedish (sv), Norwegian (no), Danish (da), Finnish (fi), Thai (th), Vietnamese (vi), Indonesian (id)
 
 ## Features
 
+- ✅ **Multi-language support** - Translate to 22+ languages
+- ✅ **Interactive language selection** - Choose target language at runtime
 - ✅ Automatic translation using Google Translate API
 - ✅ Manual CSV workflow for review and editing
 - ✅ Batch processing with Salesforce Composite API

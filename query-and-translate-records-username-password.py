@@ -2,6 +2,7 @@
 """
 Query and translate records - Username/Password authentication
 Uses Salesforce SOAP API for login
+Supports multiple target languages
 """
 import json
 import requests
@@ -10,8 +11,8 @@ import time
 import xml.etree.ElementTree as ET
 
 # Configuration - UPDATE THESE
-INSTANCE_URL = "" 
-USERNAME = "***********"  # Your Salesforce username
+INSTANCE_URL = "https://gandham.my.salesforce-com.ut5fm8x39smv0pzcasy21xozj16.wc.crm.dev:6101"
+USERNAME = "rgandham_gmtesting@salesforce.com"  # Your Salesforce username
 PASSWORD = "Test1234"  # Your password
 SECURITY_TOKEN = ""  # Your security token (leave empty if not required)
 API_VERSION = "67.0"  # Salesforce API version (change if needed: 61.0, 62.0, 68.0, etc.)
@@ -21,10 +22,38 @@ TRANSLATION_OBJECTS = {
     "ActionPlan": "ActionPlanDataTranslation",
     "FundingAwardRqmtSection": "FundingAwardRqmtSectionDataTranslation",
     "IndividualApplicationTask": "IndividualApplicationTaskDataTranslation",
-    "IntakeFormSection": "IntakeFormSectionDataTranslation"
+    "IntakeFormSection": "IntakeFormSectionDataTranslation",
+    "BudgetCategory": "BudgetCategoryDataTranslation",
+    "BudgetPeriod": "BudgetPeriodDataTranslation"
 }
 
 TRANSLATION_METHOD = 'googletrans'
+
+# Supported languages with their codes and names
+SUPPORTED_LANGUAGES = {
+    'fr': 'French',
+    'es': 'Spanish',
+    'de': 'German',
+    'it': 'Italian',
+    'pt': 'Portuguese',
+    'ja': 'Japanese',
+    'zh-cn': 'Chinese (Simplified)',
+    'zh-tw': 'Chinese (Traditional)',
+    'ko': 'Korean',
+    'ar': 'Arabic',
+    'hi': 'Hindi',
+    'ru': 'Russian',
+    'nl': 'Dutch',
+    'pl': 'Polish',
+    'tr': 'Turkish',
+    'sv': 'Swedish',
+    'no': 'Norwegian',
+    'da': 'Danish',
+    'fi': 'Finnish',
+    'th': 'Thai',
+    'vi': 'Vietnamese',
+    'id': 'Indonesian'
+}
 
 def login_with_password(username: str, password: str, security_token: str = "") -> Dict:
     """
@@ -160,12 +189,12 @@ def query_records(access_token: str, instance_url: str, object_name: str) -> Lis
     print(f"✅ Found {len(records)} {object_name} records")
     return records
 
-def translate_to_french_googletrans(text: str) -> str:
+def translate_googletrans(text: str, target_lang: str) -> str:
     """Translate using googletrans"""
     try:
         from googletrans import Translator
         translator = Translator()
-        result = translator.translate(text, src='en', dest='fr')
+        result = translator.translate(text, src='en', dest=target_lang)
         return result.text
     except ImportError:
         print("❌ googletrans not installed. Run: pip3 install googletrans==4.0.0-rc1")
@@ -174,11 +203,11 @@ def translate_to_french_googletrans(text: str) -> str:
         print(f"⚠️  Translation error: {e}")
         return text
 
-def translate_to_french_deep_translator(text: str) -> str:
+def translate_deep_translator(text: str, target_lang: str) -> str:
     """Translate using deep-translator"""
     try:
         from deep_translator import GoogleTranslator
-        translator = GoogleTranslator(source='en', target='fr')
+        translator = GoogleTranslator(source='en', target=target_lang)
         return translator.translate(text)
     except ImportError:
         print("❌ deep-translator not installed. Run: pip3 install deep-translator")
@@ -187,12 +216,12 @@ def translate_to_french_deep_translator(text: str) -> str:
         print(f"⚠️  Translation error: {e}")
         return text
 
-def translate_to_french(text: str, method: str = 'googletrans') -> str:
-    """Translate text to French"""
+def translate_text(text: str, target_lang: str, method: str = 'googletrans') -> str:
+    """Translate text to target language"""
     if method == 'googletrans':
-        return translate_to_french_googletrans(text)
+        return translate_googletrans(text, target_lang)
     elif method == 'deep-translator':
-        return translate_to_french_deep_translator(text)
+        return translate_deep_translator(text, target_lang)
     else:
         return text
 
@@ -306,11 +335,50 @@ def insert_translation_records(access_token: str, instance_url: str, translation
         "results": all_results
     }
 
+def get_target_language():
+    """Get target language from user"""
+    print("\n" + "=" * 60)
+    print("Select Target Language")
+    print("=" * 60)
+
+    # Show popular languages first
+    print("\nPopular languages:")
+    popular = [('fr', 'French'), ('es', 'Spanish'), ('de', 'German'), ('it', 'Italian'),
+               ('pt', 'Portuguese'), ('ja', 'Japanese'), ('zh-cn', 'Chinese (Simplified)')]
+    for code, name in popular:
+        print(f"  {code:<10} - {name}")
+
+    print("\nAll supported languages:")
+    for code, name in sorted(SUPPORTED_LANGUAGES.items(), key=lambda x: x[1]):
+        if code not in [p[0] for p in popular]:
+            print(f"  {code:<10} - {name}")
+
+    while True:
+        lang_code = input("\nEnter language code (or press Enter for French): ").strip().lower()
+
+        # Default to French if empty
+        if not lang_code:
+            lang_code = 'fr'
+
+        # Validate language code
+        if lang_code in SUPPORTED_LANGUAGES:
+            lang_name = SUPPORTED_LANGUAGES[lang_code]
+            confirm = input(f"\nTranslate to {lang_name} ({lang_code})? (Y/n): ").strip().lower()
+            if confirm in ['', 'y', 'yes']:
+                return lang_code, lang_name
+        else:
+            print(f"❌ Invalid language code: {lang_code}")
+            print("   Please choose from the list above")
+
 def main():
     print("=" * 60)
-    print("French Translation Generator")
+    print("Multi-Language Translation Generator")
     print("Username/Password Authentication")
     print("=" * 60)
+
+    # Get target language
+    target_lang, lang_name = get_target_language()
+    print(f"\n✅ Target language: {lang_name} ({target_lang})")
 
     # Get credentials
     username, password, security_token = get_credentials()
@@ -353,16 +421,16 @@ def main():
             print(f"   ℹ️  No records found for {object_name}")
             continue
 
-        print(f"\nTranslating {len(records)} records:")
+        print(f"\nTranslating {len(records)} records to {lang_name}:")
         for idx, record in enumerate(records, 1):
-            french_name = translate_to_french(record["Name"], TRANSLATION_METHOD)
-            print(f"  {idx}. {record['Name']:<40} → {french_name}")
+            translated_name = translate_text(record["Name"], target_lang, TRANSLATION_METHOD)
+            print(f"  {idx}. {record['Name']:<40} → {translated_name}")
 
             all_translations.append({
                 "attributes": {"type": translation_object},
                 "ParentId": record["Id"],
-                "Language": "fr",
-                "Name": french_name
+                "Language": target_lang,
+                "Name": translated_name
             })
             time.sleep(0.1)
 
@@ -372,7 +440,7 @@ def main():
 
     # Confirm
     print(f"\n{'='*60}")
-    confirm = input(f"Insert {len(all_translations)} translation records? (y/N): ")
+    confirm = input(f"Insert {len(all_translations)} {lang_name} translation records? (y/N): ")
     if confirm.lower() != 'y':
         print("❌ Aborted")
         return
@@ -384,9 +452,9 @@ def main():
     # Summary
     skipped = result.get('skipped', 0)
     if skipped > 0:
-        print(f"\n⏭️  Skipped {skipped} records (already have translations)")
+        print(f"\n⏭️  Skipped {skipped} records (already have {lang_name} translations)")
 
-    print(f"✅ Successfully inserted {result['count']} new translation records")
+    print(f"✅ Successfully inserted {result['count']} new {lang_name} translation records")
 
     if result['count'] > 0 or skipped > 0:
         print(f"   Total processed: {result.get('total', 0)} records")
@@ -400,7 +468,7 @@ def main():
             print(f"  • {error_msg}")
 
     print("\n" + "=" * 60)
-    print("Done!")
+    print(f"Done! Translations created in {lang_name}")
     print("=" * 60)
 
 if __name__ == "__main__":
